@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:block_porn/service/service_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BlockPorn extends StatefulWidget {
   const BlockPorn({super.key});
@@ -10,10 +12,22 @@ class BlockPorn extends StatefulWidget {
 
 class _BlockPornState extends State<BlockPorn> with WidgetsBindingObserver {
 
-
+  SharedPreferences? _prefs;
   bool switchPorn = false;
+  static const String key = "block_porn_enabled";
 
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
 
+  Future<void> _loadSettings() async {
+    _prefs = await SharedPreferences.getInstance();
+    setState(() {
+      switchPorn = _prefs?.getBool(key) ?? false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,12 +47,15 @@ class _BlockPornState extends State<BlockPorn> with WidgetsBindingObserver {
         height: 300,
         width: 280,
         decoration: BoxDecoration(border: Border.all(color: Colors.red)),
-        child: Column(children: [_switchPorn()],),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [_switchPorn()],
+        ),
       ),
     );
   }
-  
-  Widget _switchPorn(){
+
+  Widget _switchPorn() {
     return SwitchListTile(
       value: switchPorn,
       onChanged: (value) async {
@@ -46,7 +63,12 @@ class _BlockPornState extends State<BlockPorn> with WidgetsBindingObserver {
           switchPorn = value;
         });
 
-        await BlockPornServiceManager.requestPermission();
+        await _prefs?.setBool(key, value);
+
+        if (value) {
+          await BlockPornServiceManager.requestPermission();
+        }
+
       },
       activeThumbColor: Colors.green,
       title: const Text(
@@ -55,5 +77,4 @@ class _BlockPornState extends State<BlockPorn> with WidgetsBindingObserver {
       ),
     );
   }
-
 }

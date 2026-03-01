@@ -1,21 +1,14 @@
 package com.example.blockPorn.block_porn.service
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 
 class BlockPornService : AccessibilityService() {
 
-    private val nomeDoMeuApp = "block_porn"
-
-    private val listaParaBloqueiar = listOf(
-        "porn", "porno", "sexo", "mia khalifa", "buceta", "novinha pelada",
-        "fodendo", "fodi", "safada", "pussy", "naked young girl", " fucking",
-        "fucked", "slut", "comendo a madastra", "porno legendado",
-        "porno com legenda", "xhamster", "novinha bucetuda",
-        "pornhub.com", "xnxx.com", "xvideos.com", "redtube.com", "sex.com", 
-        "beeg.com", "youporn.com"
-    )
+    private val TAG = "BlockPornService"
+    private val nomeDoMeuApp = "Blocker"
 
     private val impedirADesistalacao = listOf(
         "desinstalar", "uninstall", "remover", "desativar", "disable",
@@ -30,22 +23,33 @@ class BlockPornService : AccessibilityService() {
         "acessibilidade", "accessibility", "dns"
     )
 
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        Log.d(TAG, "Serviço de Acessibilidade Conectado")
+    }
+
+    private fun isBlockEnabled(): Boolean {
+        val sharedPreferences = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val enabled = sharedPreferences.getBoolean("flutter.block_porn_enabled", false)
+         Log.d(TAG, "Bloqueio ativado no SharedPreferences? $enabled")
+        return enabled
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        val telaAtual = rootInActiveWindow
+
+        if (!isBlockEnabled()) return
+
+        val telaAtual = rootInActiveWindow ?: return
         val nomeDoPacote = event.packageName?.toString() ?: ""
 
-        // 1. Bloqueio de palavras proibidas e Sites
-        for (palavra in listaParaBloqueiar) {
-            if (telaAtual?.findAccessibilityNodeInfosByText(palavra)?.isNotEmpty() == true) {
-                performGlobalAction(GLOBAL_ACTION_BACK)
-                return
-            }
-        }
+
 
         // 2. Proteção contra Desinstalação e Pausa do próprio App
-        if (telaAtual?.findAccessibilityNodeInfosByText(nomeDoMeuApp)?.isNotEmpty() == true) {
+        val nodeMeuApp = telaAtual.findAccessibilityNodeInfosByText(nomeDoMeuApp)
+        if (nodeMeuApp != null && nodeMeuApp.isNotEmpty()) {
             for (termo in impedirADesistalacao) {
                 if (telaAtual.findAccessibilityNodeInfosByText(termo)?.isNotEmpty() == true) {
+                    Log.d(TAG, "Bloqueando tentativa de desinstalar/parar app: $termo")
                     performGlobalAction(GLOBAL_ACTION_BACK)
                     return
                 }
@@ -55,7 +59,8 @@ class BlockPornService : AccessibilityService() {
         // 3. Bloquear Sistema (Reiniciar/Modo de Segurança)
         if (nomeDoPacote == "android" || nomeDoPacote == "com.android.systemui") {
             for (termo in bloquearSistema) {
-                if (telaAtual?.findAccessibilityNodeInfosByText(termo)?.isNotEmpty() == true) {
+                if (telaAtual.findAccessibilityNodeInfosByText(termo)?.isNotEmpty() == true) {
+                    Log.d(TAG, "Bloqueando menu do sistema: $termo")
                     performGlobalAction(GLOBAL_ACTION_BACK)
                     return
                 }
@@ -65,7 +70,8 @@ class BlockPornService : AccessibilityService() {
         // 4. Bloquear Configurações (Acessibilidade/DNS)
         if (nomeDoPacote == "com.android.settings") {
             for (termo in bloquearConfiguracoes) {
-                if (telaAtual?.findAccessibilityNodeInfosByText(termo)?.isNotEmpty() == true) {
+                if (telaAtual.findAccessibilityNodeInfosByText(termo)?.isNotEmpty() == true) {
+                    Log.d(TAG, "Bloqueando configurações sensíveis: $termo")
                     performGlobalAction(GLOBAL_ACTION_BACK)
                     return
                 }
@@ -73,5 +79,7 @@ class BlockPornService : AccessibilityService() {
         }
     }
 
-    override fun onInterrupt() {}
+    override fun onInterrupt() {
+        Log.d(TAG, "Serviço Interrompido")
+    }
 }
